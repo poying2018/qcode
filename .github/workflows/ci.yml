@@ -42,15 +42,20 @@ jobs:
         run: npm ci
       - name: 准备内置内核
         shell: pwsh
+        env:
+          KERNEL_VERSION: ${{ vars.QCODE_KERNEL_VERSION || '0.27.2' }}
         run: |
           New-Item -ItemType Directory -Force build\kernel | Out-Null
           Copy-Item (Get-Command node).Source build\kernel\node.exe
           Push-Location build\kernel
-          npm install --omit=dev --no-save @qwen-code/qwen-code
+          npm install --omit=dev --no-save --no-audit --no-fund "@qwen-code/qwen-code@$env:KERNEL_VERSION"
           Pop-Location
-          if (-not (Test-Path build\kernel\node_modules\@qwen-code\qwen-code\cli-entry.js)) {
-            throw '内核入口缺失，见 docs/BUILDING.md'
-          }
+          $pkgDir = 'build\kernel\node_modules\@qwen-code\qwen-code'
+          $pkg = Get-Content (Join-Path $pkgDir 'package.json') -Raw | ConvertFrom-Json
+          $bin = $pkg.bin
+          $entryName = if ($bin -is [string]) { $bin } elseif ($bin.qwen) { $bin.qwen } else { 'cli-entry.js' }
+          if (-not (Test-Path (Join-Path $pkgDir $entryName))) { throw '内核入口缺失，见 docs/BUILDING.md' }
+          "内核就绪：$($pkg.version)"
       - name: 跑功能断言
         shell: pwsh
         run: |

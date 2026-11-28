@@ -40,16 +40,33 @@ jobs:
 
       - name: 准备内置内核
         shell: pwsh
+        env:
+          # 锁定内核版本：npm 上最新的 0.29.x 发布包里没有 cli-entry.js，装了也起不来。
+          # 需要升级时改这里（或设置仓库变量 QCODE_KERNEL_VERSION）并在本地验一遍再提。
+          KERNEL_VERSION: ${{ vars.QCODE_KERNEL_VERSION || '0.27.2' }}
         run: |
           # build/kernel 不进版本库（node.exe 约 92MB + 运行树），这里按 docs/BUILDING.md 现场生成
           New-Item -ItemType Directory -Force build\kernel | Out-Null
           Copy-Item (Get-Command node).Source build\kernel\node.exe
           Push-Location build\kernel
-          npm install --omit=dev --no-save --no-audit --no-fund @qwen-code/qwen-code
+          npm install --omit=dev --no-save --no-audit --no-fund "@qwen-code/qwen-code@$env:KERNEL_VERSION"
           Pop-Location
-          $entry = 'build\kernel\node_modules\@qwen-code\qwen-code\cli-entry.js'
-          if (-not (Test-Path $entry)) { throw "内核入口缺失：$entry（见 docs/BUILDING.md）" }
-          "内核就绪：$((Get-Item 'build\kernel\node.exe').Length) B + 运行树"
+
+          $pkgDir = 'build\kernel\node_modules\@qwen-code\qwen-code'
+          if (-not (Test-Path $pkgDir)) { throw "内核包未安装：$pkgDir" }
+          $pkg = Get-Content (Join-Path $pkgDir 'package.json') -Raw | ConvertFrom-Json
+          "内核版本：$($pkg.version)"
+
+          # 入口从 package.json 的 bin 推导，避免写死文件名
+          $bin = $pkg.bin
+          $entryName = if ($bin -is [string]) { $bin } elseif ($bin.qwen) { $bin.qwen } else { 'cli-entry.js' }
+          $entry = Join-Path $pkgDir $entryName
+          if (-not (Test-Path $entry)) {
+            "包内实际文件："
+            Get-ChildItem $pkgDir -Name | Select-Object -First 30
+            throw "内核入口缺失：$entry（见 docs/BUILDING.md）"
+          }
+          "内核就绪：node.exe $((Get-Item 'build\kernel\node.exe').Length) B + $entry"
 
       - name: 方言检查
         shell: pwsh
