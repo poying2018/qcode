@@ -40,16 +40,16 @@ jobs:
 
       - name: 准备内置内核
         shell: pwsh
-        env:
-          # 锁定内核版本：npm 上最新的 0.29.x 发布包里没有 cli-entry.js，装了也起不来。
-          # 需要升级时改这里（或设置仓库变量 QCODE_KERNEL_VERSION）并在本地验一遍再提。
-          KERNEL_VERSION: ${{ vars.QCODE_KERNEL_VERSION || '0.27.2' }}
         run: |
-          # build/kernel 不进版本库（node.exe 约 92MB + 运行树），这里按 docs/BUILDING.md 现场生成
+          # build/kernel 不进版本库（node.exe 约 92MB + 运行树），按 docs/BUILDING.md 现场生成。
+          # 必须先写一个 package.json：否则 npm 会一路向上找到仓库根的 package.json，
+          # 把依赖装到 <repo>/node_modules，build/kernel/node_modules 里什么都没有。
           New-Item -ItemType Directory -Force build\kernel | Out-Null
           Copy-Item (Get-Command node).Source build\kernel\node.exe
+          Set-Content 'build\kernel\package.json' '{"name":"qcode-kernel","private":true}' -Encoding ascii
+
           Push-Location build\kernel
-          npm install --omit=dev --no-save --no-audit --no-fund "@qwen-code/qwen-code@$env:KERNEL_VERSION"
+          npm install --omit=dev --no-save --no-audit --no-fund @qwen-code/qwen-code
           Pop-Location
 
           $pkgDir = 'build\kernel\node_modules\@qwen-code\qwen-code'
@@ -57,7 +57,6 @@ jobs:
           $pkg = Get-Content (Join-Path $pkgDir 'package.json') -Raw | ConvertFrom-Json
           "内核版本：$($pkg.version)"
 
-          # 入口从 package.json 的 bin 推导，避免写死文件名
           $bin = $pkg.bin
           $entryName = if ($bin -is [string]) { $bin } elseif ($bin.qwen) { $bin.qwen } else { 'cli-entry.js' }
           $entry = Join-Path $pkgDir $entryName
