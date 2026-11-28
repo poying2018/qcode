@@ -28,10 +28,20 @@
 ## 验证
 
 ```text
-冒烟      : 599 项断言 / 590 布尔 / 0 false
-CI        : 语法检查 job 通过
-构建      : GitHub Actions windows-latest 产出 zip + Setup，附件由工作流自动上传
+本地冒烟（内核 0.29.0）  : 599 项断言 / 590 布尔 / 0 false
+本地真实对话（--e2e）    : ok，两轮均收到回复，无 renderer 错误
+Actions 发布运行          : success（15 个步骤全绿，含内核准备、打包、上传、发布）
+Actions artifact          : qcode-windows 426,182,217 B（保留 14 天）
 ```
+
+产物（由 GitHub Actions 在 windows-latest 上构建）：
+
+```text
+Qcode-0.4.6-win.zip      240,420,454 B  sha256 9dc16182…df70274
+Qcode-Setup-0.4.6.exe    186,689,818 B  sha256 8a869f7a…542edd
+```
+
+内置内核：`@qwen-code/qwen-code` **最新版（0.29.0）**，随安装包分发。
 
 ## 升级
 
