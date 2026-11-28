@@ -1,7 +1,7 @@
 {
   "name": "qcode",
   "productName": "Qcode",
-  "version": "0.4.5",
+  "version": "0.4.6",
   "private": true,
   "description": "Qcode — Qwen Code CLI 的 Windows 桌面图形外壳",
   "license": "MIT",

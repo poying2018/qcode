@@ -1,0 +1,135 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: '版本号（留空则用 package.json 里的 version）'
+        required: false
+        type: string
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: 构建 Windows 安装包
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - name: 检出
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Node 环境
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: 安装构建依赖
+        run: npm ci
+
+      - name: 准备内置内核
+        shell: pwsh
+        run: |
+          # build/kernel 不进版本库（node.exe 约 92MB + 运行树），这里按 docs/BUILDING.md 现场生成
+          New-Item -ItemType Directory -Force build\kernel | Out-Null
+          Copy-Item (Get-Command node).Source build\kernel\node.exe
+          Push-Location build\kernel
+          npm install --omit=dev --no-save --no-audit --no-fund @qwen-code/qwen-code
+          Pop-Location
+          $entry = 'build\kernel\node_modules\@qwen-code\qwen-code\cli-entry.js'
+          if (-not (Test-Path $entry)) { throw "内核入口缺失：$entry（见 docs/BUILDING.md）" }
+          "内核就绪：$((Get-Item 'build\kernel\node.exe').Length) B + 运行树"
+
+      - name: 方言检查
+        shell: pwsh
+        run: |
+          node --check main.js
+          node --check preload.js
+          node --check renderer/app.js
+
+      - name: 打包
+        shell: pwsh
+        run: |
+          npm run dist
+          Get-ChildItem dist -Filter '*.exe' | Select-Object Name, Length
+          Get-ChildItem dist -Filter '*.zip' | Select-Object Name, Length
+
+      - name: 生成校验和
+        shell: pwsh
+        run: |
+          $v = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          $lines = @()
+          foreach ($f in @("Qcode-$v-win.zip", "Qcode-Setup-$v.exe")) {
+            $p = Join-Path 'dist' $f
+            if (-not (Test-Path $p)) { throw "缺少产物：$p" }
+            $h = (Get-FileHash $p -Algorithm SHA256).Hash.ToLower()
+            $lines += "$h  $f"
+            "$f  $h"
+          }
+          $lines += '# built by GitHub Actions on ' + (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') + ' UTC' + (Get-Date).ToUniversalTime().ToString('zzz')
+          Set-Content "dist\SHA256SUMS-$v.txt" $lines -Encoding ascii
+
+      - name: 上传构建产物（Actions artifacts）
+        uses: actions/upload-artifact@v4
+        with:
+          name: qcode-windows
+          path: |
+            dist/*.exe
+            dist/*.zip
+            dist/SHA256SUMS-*.txt
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: 解析版本与标签
+        id: meta
+        shell: pwsh
+        run: |
+          $v = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          $input = '${{ inputs.version }}'
+          if ($input) { $v = $input }
+          "version=$v" >> $env:GITHUB_OUTPUT
+          "tag=v$v" >> $env:GITHUB_OUTPUT
+          "发布版本：$v"
+
+      - name: 发布 Release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $v = '${{ steps.meta.outputs.version }}'
+          $tag = '${{ steps.meta.outputs.tag }}'
+          $zip = "dist\Qcode-$v-win.zip"
+          $exe = "dist\Qcode-Setup-$v.exe"
+          $sums = "dist\SHA256SUMS-$v.txt"
+
+          $exists = $true
+          gh release view $tag 2>$null | Out-Null
+          if ($LASTEXITCODE -ne 0) { $exists = $false }
+
+          if ($exists) {
+            "Release $tag 已存在，覆盖附件"
+            gh release upload $tag $zip $exe $sums --clobber
+          } else {
+            "创建 Release $tag"
+            $notes = if (Test-Path "RELEASE-NOTES-$v.md") { "RELEASE-NOTES-$v.md" } else { "README.md" }
+            gh release create $tag $zip $exe $sums --title "Qcode $v" --notes-file $notes
+          }
+          if ($LASTEXITCODE -ne 0) { throw "发布失败（exit=$LASTEXITCODE）" }
+
+      - name: 汇总
+        shell: pwsh
+        run: |
+          $v = '${{ steps.meta.outputs.version }}'
+          "=== Release v$v ==="
+          gh release view "v$v" --json url,assets --jq '.url, (.assets[] | "\(.name) \(.size) \(.state)")'

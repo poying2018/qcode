@@ -15,7 +15,7 @@
 param(
   [switch]$Apply,
   [string]$InstallDir = (Join-Path $env:LOCALAPPDATA 'Programs\Qcode'),
-  [string]$Target = '0.4.5',
+  [string]$Target = (Get-Content (Join-Path (Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)) 'package.json') -Raw | ConvertFrom-Json).version,
   [switch]$SkipSmoke,
   [int]$SmokeTimeoutSec = 240
 )
