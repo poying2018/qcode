@@ -76,8 +76,12 @@ jobs:
 
       - name: 打包
         shell: pwsh
+        env:
+          # electron-builder 在 CI 的 tag 构建里会自动尝试上传到 GitHub，
+          # 这里只负责出包，发布交给后面的 gh 步骤（--publish never 关掉自动发布）
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
         run: |
-          npm run dist
+          npm run dist -- --publish never
           Get-ChildItem dist -Filter '*.exe' | Select-Object Name, Length
           Get-ChildItem dist -Filter '*.zip' | Select-Object Name, Length
 
