@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # 纯语法检查：跨平台、秒级、无外部依赖，任何提交都必须过
+  syntax:
+    name: 语法检查
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: node --check
+        run: |
+          node --check main.js
+          node --check preload.js
+          node --check renderer/app.js
+
+  # 功能断言：需要「内置内核」，而内核不进版本库（见 docs/BUILDING.md）。
+  # 默认关闭，仓库维护者在确认内核可自动准备后，把仓库变量 QCODE_ENABLE_SMOKE 设为 true 即可启用。
+  smoke:
+    name: 功能断言（--smoke）
+    if: ${{ vars.QCODE_ENABLE_SMOKE == 'true' }}
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: 安装依赖
+        run: npm ci
+      - name: 准备内置内核
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force build\kernel | Out-Null
+          Copy-Item (Get-Command node).Source build\kernel\node.exe
+          Push-Location build\kernel
+          npm install --omit=dev --no-save @qwen-code/qwen-code
+          Pop-Location
+          if (-not (Test-Path build\kernel\node_modules\@qwen-code\qwen-code\cli-entry.js)) {
+            throw '内核入口缺失，见 docs/BUILDING.md'
+          }
+      - name: 跑功能断言
+        shell: pwsh
+        run: |
+          # 宿主若注入 ELECTRON_RUN_AS_NODE，electron 会退化成纯 Node
+          Remove-Item Env:ELECTRON_RUN_AS_NODE -ErrorAction SilentlyContinue
+          $env:QCODE_USER_DATA = Join-Path $env:RUNNER_TEMP 'qcode-ci-smoke'
+          npx electron . --smoke 2>&1 | Tee-Object -FilePath smoke.log
+          $line = Select-String -Path smoke.log -Pattern '\[smoke\] features: (\{.*\})' | Select-Object -Last 1
+          if (-not $line) { throw '未找到 [smoke] features 汇总行' }
+          $json = $line.Matches[0].Groups[1].Value | ConvertFrom-Json
+          $falseKeys = $json.PSObject.Properties | Where-Object { $_.Value -is [bool] -and $_.Value -eq $false } | ForEach-Object { $_.Name }
+          if ($falseKeys.Count -gt 0) { throw ('断言失败: ' + ($falseKeys -join ', ')) }
+          '功能断言全部通过'
+      - name: 上传日志
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-log
+          path: smoke.log
+          if-no-files-found: ignore

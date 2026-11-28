@@ -1,0 +1,77 @@
+{
+  "name": "qcode",
+  "productName": "Qcode",
+  "version": "0.4.5",
+  "private": true,
+  "description": "Qcode — Qwen Code CLI 的 Windows 桌面图形外壳",
+  "license": "MIT",
+  "author": "ljanx",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/poying2018/qcode.git"
+  },
+  "homepage": "https://github.com/poying2018/qcode#readme",
+  "bugs": {
+    "url": "https://github.com/poying2018/qcode/issues"
+  },
+  "main": "main.js",
+  "keywords": [
+    "qwen",
+    "qwen-code",
+    "electron",
+    "desktop",
+    "gui",
+    "cli",
+    "coding-agent",
+    "windows"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win",
+    "check": "node --check main.js && node --check preload.js && node --check renderer/app.js",
+    "smoke": "electron . --smoke",
+    "bench": "electron . --bench",
+    "idle": "electron . --idle",
+    "e2e": "electron . --e2e"
+  },
+  "devDependencies": {
+    "electron": "43.7.3",
+    "electron-builder": "26.18.0"
+  },
+  "build": {
+    "productName": "Qcode",
+    "asar": true,
+    "afterPack": "scripts/afterPack.js",
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer/**",
+      "build/**",
+      "!build/kernel/**"
+    ],
+    "extraResources": [
+      {
+        "from": "build/kernel",
+        "to": "kernel"
+      }
+    ],
+    "win": {
+      "target": [
+        "zip",
+        "nsis"
+      ],
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "deleteAppDataOnUninstall": false,
+      "guid": "a34e7dfb-8998-50e2-896e-4afc4a5b70c4",
+      "artifactName": "${productName}-Setup-${version}.${ext}"
+    }
+  }
+}

@@ -1,0 +1,16 @@
+# 统一换行：仓库内文本文件一律 LF，Windows 脚本保持 CRLF 以免 PowerShell 误解析
+* text=auto eol=lf
+
+*.ps1 text eol=crlf
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+# 二进制资源不做行尾转换与 diff
+*.png binary
+*.ico binary
+*.exe binary
+*.zip binary
+*.asar binary
+
+# 锁文件在 GitHub 上折叠显示
+package-lock.json linguist-generated=true -diff

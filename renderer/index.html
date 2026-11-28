@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none';" />
+<title>Qcode</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<div class="app">
+
+  <!-- 顶部工具栏：仅窗口控制、拖动与快捷动作；会话列表只保留在左侧栏 -->
+  <header class="tabbar">
+    <div class="tabbar-actions">
+      <button class="icon-btn" id="btnSidebar" aria-label="切换侧栏" title="切换侧栏 (Ctrl+B)">
+        <svg viewBox="0 0 16 16"><rect x="2.2" y="3" width="11.6" height="10" rx="2"/><path d="M6.2 3v10"/></svg>
+      </button>
+      <button class="icon-btn" id="btnNew" aria-label="新建会话" title="新建会话">
+        <svg viewBox="0 0 16 16"><path d="M8 3.2v9.6M3.2 8h9.6"/></svg>
+      </button>
+      <button class="icon-btn" id="btnFind" aria-label="在会话中查找" title="在会话中查找 (Ctrl+F)">
+        <svg viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.2"/><path d="M10.2 10.2L13 13"/></svg>
+      </button>
+      <button class="icon-btn" id="btnExport" aria-label="导出会话" title="导出会话为 Markdown">
+        <svg viewBox="0 0 16 16"><path d="M8 3v7.6M4.8 7.4L8 10.6l3.2-3.2"/><path d="M3 12.6h10"/></svg>
+      </button>
+      <button class="icon-btn" id="btnPanel" aria-label="活动面板" title="活动面板">
+        <svg viewBox="0 0 16 16"><rect x="2.2" y="3" width="11.6" height="10" rx="2"/><path d="M10 3v10"/></svg>
+      </button>
+    </div>
+    <div class="winctl">
+      <button id="btnMin" aria-label="最小化" title="最小化"><svg viewBox="0 0 12 12"><path d="M2.5 6h7"/></svg></button>
+      <button id="btnMax" aria-label="最大化" title="最大化"><svg viewBox="0 0 12 12"><rect x="2.6" y="2.6" width="6.8" height="6.8" rx="1"/></svg></button>
+      <button id="btnClose" aria-label="关闭窗口" class="close" title="关闭"><svg viewBox="0 0 12 12"><path d="M3 3l6 6M9 3l-6 6"/></svg></button>
+    </div>
+  </header>
+
+  <div class="body">
+
+    <!-- 左侧栏 -->
+    <aside class="sidebar" id="sidebar">
+      <div class="search">
+        <svg viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.2"/><path d="M10.2 10.2L13 13"/></svg>
+        <input id="search" placeholder="搜索会话与消息" spellcheck="false" aria-label="搜索会话与消息" />
+      </div>
+
+      <div class="section">
+        <span class="section-title">
+          <svg viewBox="0 0 16 16" class="ico"><path d="M3 7h10v5.2a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/><path d="M4.4 7V5.2A1.2 1.2 0 0 1 5.6 4h4.8a1.2 1.2 0 0 1 1.2 1.2V7"/><path d="M6.6 4V2.8h2.8V4"/></svg>
+          日常
+          <span class="count" id="sessionCount"></span>
+        </span>
+      </div>
+      <div class="session-list" id="sessionList" role="listbox" aria-label="会话列表"></div>
+
+      <div class="section">
+        <span class="section-title" id="projectSectionTitle">
+          <button class="mini-btn section-caret" id="btnProjectsToggle" title="折叠项目" aria-expanded="true">
+            <svg viewBox="0 0 16 16"><path d="M4 6l4 4 4-4"/></svg>
+          </button>
+          <svg viewBox="0 0 16 16" class="ico"><path d="M2.2 5.2A1.2 1.2 0 0 1 3.4 4h2.3l1.2 1.4h5.7a1.2 1.2 0 0 1 1.2 1.2v5a1.2 1.2 0 0 1-1.2 1.2H3.4a1.2 1.2 0 0 1-1.2-1.2z"/></svg>
+          项目
+        </span>
+        <button class="mini-btn" id="btnFolder" title="添加工作目录">
+          <svg viewBox="0 0 16 16"><path d="M8 3.4v9.2M3.4 8h9.2"/></svg>
+        </button>
+      </div>
+      <div class="project-wrap" id="projectWrap"><div class="project-list" id="projectList" role="listbox" aria-label="项目列表"></div></div>
+      <button class="archive-entry" id="btnArchiveView" title="打开归档视图">
+        <svg viewBox="0 0 16 16" class="ico"><path d="M2.5 5.5h11v7a1.5 1.5 0 0 1-1.5 1.5H4a1.5 1.5 0 0 1-1.5-1.5z"/><path d="M2 2.5h12v3H2zM6.5 8.5h3"/></svg>
+        <span class="txt">归档</span>
+        <span class="count" id="archiveCount"></span>
+      </button>
+
+      <div class="sidebar-foot">
+        <button class="foot-btn" id="btnSettings">
+          <svg viewBox="0 0 16 16" class="ico"><circle cx="8" cy="8" r="2.2"/><path d="M8 1.8v1.4M8 12.8v1.4M1.8 8h1.4M12.8 8h1.4M3.6 3.6l1 1M11.4 11.4l1 1M12.4 3.6l-1 1M4.6 11.4l-1 1"/></svg>
+          设置
+        </button>
+      </div>
+    </aside>
+
+    <!-- 主区 -->
+    <main class="main">
+      <div class="thread-shell">
+      <div class="thread" id="thread" role="log" aria-label="对话记录">
+        <div class="empty" id="empty">
+          <div class="gem-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <defs><linearGradient id="gemSparkGrad" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#4285f4"/><stop offset="0.5" stop-color="#9b72cb"/><stop offset="1" stop-color="#d96570"/>
+              </linearGradient></defs>
+              <path d="M12 1.6l1.7 6.1 6.1 1.7-6.1 1.7-1.7 6.1-1.7-6.1L4.2 9.4l6.1-1.7z"/>
+              <path d="M19.4 15.2l.7 2.4 2.4.7-2.4.7-.7 2.4-.7-2.4-2.4-.7 2.4-.7z" opacity="0.75"/>
+            </svg>
+          </div>
+          <h1 class="gem-greeting">需要我为你做些什么？</h1>
+          <p class="gem-sub">Qcode · 随时为你效劳</p>
+          <p class="empty-hint">随便问点什么，用 <code>@</code> 指定文件 / <code>/</code> 调用命令 / <code>Ctrl K</code> 打开面板</p>
+          <div class="empty-actions">
+            <button data-suggest="用几句话介绍一下这个工作目录里的项目结构"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.2 4.6a1.2 1.2 0 0 1 1.2-1.2h2.3l1.2 1.4h5.9a1.2 1.2 0 0 1 1.2 1.2v5.4a1.2 1.2 0 0 1-1.2 1.2H3.4a1.2 1.2 0 0 1-1.2-1.2z"/></svg>介绍这个目录</button>
+            <button data-suggest="列出当前目录最近修改过的 10 个文件，并说明它们大概是什么"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5.6"/><path d="M8 4.9V8l2.2 1.5"/></svg>最近改了什么</button>
+            <button data-suggest="检查这个项目有没有明显的构建或依赖问题"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.4l4.4 1.8v3.3c0 2.6-1.8 4.6-4.4 5.6-2.6-1-4.4-3-4.4-5.6V4.2z"/><path d="M6 8l1.4 1.4L10.2 6.6"/></svg>检查项目问题</button>
+          </div>
+        </div>
+      </div>
+      <div class="thread-skeleton" id="threadSkeleton" aria-hidden="true">
+        <div class="sk-inner">
+          <div class="sk-row end"><span class="sk-bubble" style="width:34%"></span></div>
+          <div class="sk-line" style="width:78%"></div>
+          <div class="sk-line" style="width:61%"></div>
+          <div class="sk-block"></div>
+          <div class="sk-line" style="width:70%"></div>
+        </div>
+      </div>
+      <div class="thread-edge top" aria-hidden="true"></div>
+      <div class="thread-edge bottom" aria-hidden="true"></div>
+      </div>
+
+      <button class="scroll-down" id="btnScrollDown" aria-label="回到底部" title="回到底部">
+        <svg viewBox="0 0 16 16"><path d="M8 3.8v8.4M4.6 8.6L8 12l3.4-3.4"/></svg>
+      </button>
+
+      <div class="find-bar" id="findBar">
+        <input id="findInput" placeholder="在会话中查找…" spellcheck="false" />
+        <span id="findCount"></span>
+        <button id="findPrev" title="上一处">↑</button>
+        <button id="findNext" title="下一处">↓</button>
+        <button id="findClose" title="关闭">×</button>
+      </div>
+
+      <div class="goal-bar" id="goalBar" hidden></div>
+
+      <div class="todo-bar" id="todoBar" hidden></div>
+
+      <div class="composer-wrap">
+        <div class="mention-menu" id="mentionMenu" role="listbox" aria-label="文件与命令建议"></div>
+        <div class="composer" id="composer">
+          <div class="cmd-row" id="cmdChipRow"></div>
+          <div class="queue-row" id="queueRow"></div>
+          <div class="attach-row" id="attachRow"></div>
+          <textarea id="input" rows="1" placeholder="随便问点什么，/ 命令，@ 上下文" spellcheck="false"></textarea>
+          <div class="composer-bar">
+            <button class="round-btn" id="btnAttach" aria-label="添加图片附件" title="添加图片附件">
+              <svg viewBox="0 0 16 16"><path d="M8 3.4v9.2M3.4 8h9.2"/></svg>
+            </button>
+            <button class="chip" id="chipApproval" title="权限档位">
+              <span class="dot"></span><span id="approvalText">智能放行</span>
+            </button>
+            <button class="chip ghost" id="chipEffort" title="模型思考强度">
+              <span id="effortText">思考：默认</span>
+              <svg viewBox="0 0 16 16" class="caret"><path d="M4.6 6.4L8 9.8l3.4-3.4"/></svg>
+            </button>
+            <div class="spacer"></div>
+            <button class="chip ghost" id="chipModel" title="切换模型">
+              <span id="modelText">DeepSeek V4.1 Flash</span>
+              <svg viewBox="0 0 16 16" class="caret"><path d="M4.6 6.4L8 9.8l3.4-3.4"/></svg>
+            </button>
+            <button class="send" id="btnSend" aria-label="发送消息" title="发送">
+              <svg viewBox="0 0 16 16"><path d="M8 12.2V4.4M4.6 7.8L8 4.4l3.4 3.4"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="under">
+          <span class="under-item" id="underCwd">
+            <svg viewBox="0 0 16 16" class="ico"><path d="M2.2 5.2A1.2 1.2 0 0 1 3.4 4h2.3l1.2 1.4h5.7a1.2 1.2 0 0 1 1.2 1.2v5a1.2 1.2 0 0 1-1.2 1.2H3.4a1.2 1.2 0 0 1-1.2-1.2z"/></svg>
+            <span id="cwdText">选择目录</span>
+          </span>
+          <span class="slash">/</span>
+          <span class="under-item" id="underStatus" aria-live="polite">
+            <span class="status-led" id="statusLed"></span>
+            <span id="statusText">就绪</span>
+          </span>
+          <span class="under-item" id="underTokens">
+            <button id="ctxRing" class="ctx-ring" type="button" title="上下文用量，点击查看明细" aria-label="上下文用量" aria-expanded="false">
+              <svg viewBox="0 0 16 16" aria-hidden="true">
+                <circle class="ctx-track" cx="8" cy="8" r="6" />
+                <circle class="ctx-arc" cx="8" cy="8" r="6" />
+              </svg>
+            </button>
+            <span id="tokensText"></span>
+          </span>
+        </div>
+      </div>
+    </main>
+
+    <!-- 右侧活动面板 -->
+    <aside class="panel" id="panel">
+      <div class="panel-head">
+        <div class="panel-tabs">
+          <span class="panel-tab-ink" id="panelTabInk" aria-hidden="true"></span>
+          <button class="panel-tab on" data-ptab="activity">活动</button>
+          <button class="panel-tab" data-ptab="files">文件</button>
+          <button class="panel-tab" data-ptab="git">Git</button>
+        </div>
+        <span class="panel-sub" id="panelUsage"></span>
+        <button class="mini-btn" id="btnPanelClose" aria-label="关闭活动面板">
+          <svg viewBox="0 0 16 16"><path d="M4 4l8 8M12 4l-8 8"/></svg>
+        </button>
+      </div>
+      <div class="panel-body" id="panelBody">
+        <div class="panel-empty">这一轮还没有工具调用</div>
+      </div>
+    </aside>
+
+  </div>
+
+  <!-- 设置页 -->
+  <div class="cfg-page" id="settingsPage" role="dialog" aria-modal="true" aria-label="设置">
+    <aside class="cfg-nav">
+      <div class="cfg-brand">设置</div>
+      <input class="cfg-search" id="cfgSearch" placeholder="搜索设置…" spellcheck="false" />
+      <span class="cfg-nav-ink" id="cfgNavInk" aria-hidden="true"></span>
+      <button class="cfg-nav-item on" data-sec="general">通用</button>
+      <button class="cfg-nav-item" data-sec="prompts">提示词</button>
+      <button class="cfg-nav-item" data-sec="providers">模型与供应商</button>
+      <button class="cfg-nav-item" data-sec="mcp">MCP 服务器</button>
+      <button class="cfg-nav-item" data-sec="hooks">钩子 Hooks</button>
+      <button class="cfg-nav-item" data-sec="memory">记忆</button>
+      <button class="cfg-nav-item" data-sec="skills">技能与扩展</button>
+      <button class="cfg-nav-item" data-sec="commands">命令</button>
+      <button class="cfg-nav-item" data-sec="usage">用量</button>
+      <button class="cfg-nav-item" data-sec="advanced">高级</button>
+      <button class="cfg-nav-item" data-sec="appearance">外观</button>
+      <button class="cfg-nav-item" data-sec="shortcuts">快捷键</button>
+      <button class="cfg-nav-item" data-sec="about">关于</button>
+      <div class="cfg-search-empty" id="cfgSearchEmpty" hidden>没有匹配的设置</div>
+      <div class="cfg-version" id="cfgVersion"></div>
+    </aside>
+    <section class="cfg-main">
+      <header class="cfg-head">
+        <button class="btn cfg-back" id="cfgBack" title="返回会话 (Esc)">← 返回</button>
+        <span class="cfg-title" id="cfgTitle">通用</span>
+        <span class="cfg-path" id="cfgPath"></span>
+        <button class="mini-btn" id="cfgClose" title="关闭">
+          <svg viewBox="0 0 16 16"><path d="M4 4l8 8M12 4l-8 8"/></svg>
+        </button>
+      </header>
+      <div class="cfg-body" id="cfgBody"></div>
+      <footer class="cfg-foot" id="cfgFoot"></footer>
+    </section>
+  </div>
+
+  <!-- 命令面板 -->
+  <div class="palette-mask" id="palette" role="dialog" aria-modal="true" aria-label="命令面板">
+    <div class="palette-box">
+      <input id="paletteQuery" placeholder="搜索会话、设置、模型、命令…" spellcheck="false" />
+      <div class="palette-list" id="paletteList"></div>
+      <div class="palette-foot">
+        <span><kbd>↑</kbd><kbd>↓</kbd> 选择</span>
+        <span><kbd>Enter</kbd> 执行</span>
+        <span><kbd>Esc</kbd> 关闭</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="toasts" id="toasts" aria-live="polite"></div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
