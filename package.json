@@ -1,7 +1,7 @@
 {
   "name": "qcode",
   "productName": "Qcode",
-  "version": "0.4.6",
+  "version": "0.4.7",
   "private": true,
   "description": "Qcode — Qwen Code CLI 的 Windows 桌面图形外壳",
   "license": "MIT",
@@ -36,7 +36,8 @@
     "bench": "electron . --bench",
     "idle": "electron . --idle",
     "e2e": "electron . --e2e",
-    "shots": "node scripts/clean-shots.js"
+    "shots": "node scripts/clean-shots.js",
+    "icons": "node scripts/make-icons.js"
   },
   "devDependencies": {
     "electron": "43.7.3",
@@ -73,6 +74,7 @@
       "deleteAppDataOnUninstall": false,
       "guid": "a34e7dfb-8998-50e2-896e-4afc4a5b70c4",
       "artifactName": "${productName}-Setup-${version}.${ext}"
-    }
+    },
+    "appId": "com.ljanx.qcode"
   }
 }

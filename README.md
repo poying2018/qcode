@@ -4,7 +4,7 @@ Qcode 是 **Qwen Code CLI 的 Windows 桌面图形外壳**。它把命令行里�
 
 - 技术栈：Electron 43 + 原生 JS（无框架、无打包器），主进程 `main.js`、预加载 `preload.js`、渲染层 `renderer/`
 - 平台：Windows 10 / 11 x64
-- 当前版本：`0.4.6`
+- 当前版本：`0.4.7`
 - 许可证：MIT（见 [LICENSE](LICENSE)）
 
 > Qcode 是第三方外壳，与阿里云 / Qwen 官方无隶属关系。Qwen Code CLI 本身遵循其上游项目许可证，请自行遵守。
@@ -97,7 +97,8 @@ npx electron . --e2e
 - [发布检查清单](docs/RELEASE-CHECKLIST.md)
 - [贡献指南](CONTRIBUTING.md)
 - [安全策略](SECURITY.md)
-- [变更记录](RELEASE-NOTES-0.4.6.md)
+- [变更记录](RELEASE-NOTES-0.4.7.md)
+- [0.4.6 变更记录](RELEASE-NOTES-0.4.6.md)
 - [0.4.5 变更记录](RELEASE-NOTES-0.4.5.md)
 
 ## 截图
