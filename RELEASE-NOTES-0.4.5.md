@@ -3535,8 +3535,8 @@ audit       : 复核通过 · smoke 599/590/0 · bench boot 170ms p95 8.5ms · i
 最终产物：
 
 ```text
-dist/Qcode-0.4.5-win.zip     225.6 MB  sha256 e279fb53…564f77d
-dist/Qcode-Setup-0.4.5.exe   174.7 MB  sha256 307b2fe8…55725a
+dist/Qcode-0.4.5-win.zip     225.6 MB  sha256 0f2e73a8…4b86d2aa4
+dist/Qcode-Setup-0.4.5.exe   174.7 MB  sha256 395a9807…9211fcdb5
 装机版 <安装目录>         0.4.5.0 · 冒烟 599/590/0
 ```
 

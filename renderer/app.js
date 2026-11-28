@@ -9668,6 +9668,9 @@ async function loadConfig() {
   state.config =
     res.config && typeof res.config === 'object' && !Array.isArray(res.config) ? res.config : {};
   state.configPath = res.path;
+  // 展示用路径把 home 前缀折叠成 ~（主进程计算），避免界面与截图里出现完整用户目录
+  state.configDisplay = res.displayPath || res.path;
+  if ($('cfgPath')) $('cfgPath').textContent = state.configDisplay || '';
   state.configWarnings = Array.isArray(res.warnings) ? res.warnings : [];
   state.configReadError = res.readError || null;
   state.config.model = state.config.model || { name: '' };
@@ -9739,7 +9742,7 @@ async function openSettings() {
   $('settingsPage').classList.add('show');
   document.body.classList.add('settings-open');
   settingsReleaseFocus = installDialogFocusTrap(cfgPage, cfgPage);
-  $('cfgPath').textContent = state.configPath || '';
+  $('cfgPath').textContent = state.configDisplay || state.configPath || '';
   paintVersion();
   // R84：打开设置不再阻塞等 extras:get（实测该 IPC 33.6ms，而分区渲染只要 4ms）——
   // 先用启动时已有的 state.extras 立即出界面，再后台刷新一次；只有 extras 真的变了才就地重绘。
@@ -10958,7 +10961,7 @@ function providerGroupForm(g, arr) {
 function saveFootHtml() {
   return `<button class="btn primary" id="cfgSave" data-focus-key="cfg-save">保存配置</button>
           <span class="cfg-hint" style="flex:1">写入 ${esc(
-            state.configPath || '~/.qwen/settings.json'
+            state.configDisplay || '~/.qwen/settings.json'
           )}，保存后自动重启内核</span>`;
 }
 

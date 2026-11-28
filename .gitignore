@@ -11,7 +11,8 @@ agent.log
 _probe*
 dev-data/
 
-# 界面截图（--shots 生成，可能含本机路径与个人配置，不入库）
+# 界面截图：smoke 顺带产出的原始图不入库（可能含本机路径与个人配置）。
+# 对外展示图放在 docs/screenshots/，由 npm run shots 生成后人工确认。
 shots/
 
 # 本地环境

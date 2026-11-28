@@ -7,8 +7,8 @@
 - [ ] `package.json` 的 `repository` / `homepage` / `bugs` 与真实仓库一致
 - [ ] `LICENSE` 的版权人年份正确
 - [ ] `README.md` 里的 clone 地址已换成真实地址
-- [ ] 仓库内**没有任何界面截图**（`shots/` 已 gitignore）。截图会暴露本机路径与个人配置；
-      需要对外展示时，用一次性干净环境（空 `userData`、假配置、临时工作区）生成后逐张人工确认
+- [ ] 仓库内没有**运行 smoke 顺带产生的截图**（`shots/` 已 gitignore，且 `runSmoke()` 默认写到临时目录）。
+      对外展示图只放在 `docs/screenshots/`，由 `npm run shots` 在干净环境生成，并**逐张人工确认**
 
 ## 2. 仓库卫生
 

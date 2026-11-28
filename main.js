@@ -58,6 +58,7 @@ const E2E = process.argv.includes('--e2e');
 const REWIND = process.argv.includes('--rewind');
 const IDLE = process.argv.includes('--idle');
 const PROBE = process.argv.includes('--probe');
+const SHOTS = process.argv.includes('--shots');
 // 确定性演练：让内核解析恒为 null，验证「完全没有可用 CLI」时的界面（不依赖真实删文件）
 const PROBE_NOKERNEL = process.argv.includes('--probe-nokernel');
 // R92：泄漏检查的轮数可配（--soak-cycles=800），并暴露 gc() 用于「GC 后保留内存」采样
@@ -1808,6 +1809,20 @@ ipcMain.handle('prefs:save', (_e, patch) => {
 const QWEN_DIR = path.join(os.homedir(), '.qwen');
 const QWEN_SETTINGS = path.join(QWEN_DIR, 'settings.json');
 
+// 展示用路径：把用户主目录折叠成 ~，界面与截图里不再出现完整用户名路径
+function displayHomeRelative(p) {
+  const abs = String(p || '');
+  if (!abs) return '';
+  const home = os.homedir();
+  const slash = abs.replace(/\\/g, '/');
+  const homeSlash = home.replace(/\\/g, '/');
+  if (slash.toLowerCase() === homeSlash.toLowerCase()) return '~';
+  if (slash.toLowerCase().startsWith(homeSlash.toLowerCase() + '/')) {
+    return '~/' + slash.slice(homeSlash.length + 1);
+  }
+  return abs;
+}
+
 function readJsonFile(p, fallback) {
   try {
     return JSON.parse(fs.readFileSync(p, 'utf8'));
@@ -2375,7 +2390,7 @@ function createWindow() {
     if (win.isDestroyed()) return;
     win.show();
     // 自检夹具统一的工作区（见 devWorkspace()），渲染层通过 window.__qcodeDevWs 取用
-    if (SMOKE || SMOKE_PERF || SMOKE_KERNEL || BENCH || SOAK || REALDATA || E2E || REWIND || IDLE) {
+    if (SMOKE || SMOKE_PERF || SMOKE_KERNEL || BENCH || SOAK || REALDATA || E2E || REWIND || IDLE || SHOTS) {
       try {
         await win.webContents.executeJavaScript(
           'window.__qcodeDevWs=' + JSON.stringify(devWorkspace()) + ';window.__qcodeDevRepo=' + JSON.stringify(DEV_REPO_DIR) + ';true'
@@ -2453,6 +2468,7 @@ function createWindow() {
     else if (REWIND) runRewindBench();
     else if (IDLE) runIdle();
     else if (PROBE || PROBE_NOKERNEL) runProbe();
+    else if (SHOTS) runShots();
   });
 
   win.on('resize', scheduleWindowSave);
@@ -4491,7 +4507,7 @@ function writeQwenSettings(config) {
 ipcMain.handle('config:get', () => {
   const config = readQwenSettings();
   const readError = qwenSettingsReadError();
-  return { path: QWEN_SETTINGS, config, warnings: validateQwenSettings(config), readError };
+  return { path: QWEN_SETTINGS, displayPath: displayHomeRelative(QWEN_SETTINGS), config, warnings: validateQwenSettings(config), readError };
 });
 ipcMain.handle('config:validate', (_e, config) => ({
   ok: true,
@@ -5962,6 +5978,115 @@ async function runIdle() {
   }
 }
 
+// R231：独立的界面截图模式 `--shots`。
+// 与 runSmoke() 里顺带截图的做法彻底分离——冒烟跑的是真实配置与真实会话，
+// 截图会把这些一起拍进去（历史上就因此泄露过用户名与内网端点）。
+// 本模式只用伪造数据：会话/消息在渲染层现造；qwen 配置由 scripts/clean-shots.js
+// 在临时 USERPROFILE 下写假文件提供；输出目录由 QCODE_SHOTS_DIR 指定。
+async function runShots() {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  const outDir = process.env.QCODE_SHOTS_DIR || path.join(WRITABLE_DIR, 'shots');
+  fs.mkdirSync(outDir, { recursive: true });
+  const cap = async (name) => {
+    const img = await mainWindow.webContents.capturePage();
+    fs.writeFileSync(path.join(outDir, name), img.toPNG());
+    log('shot ' + name);
+    console.log('[shots] ' + name);
+  };
+  try {
+    await wait(1400);
+    // 截图里的工作区用固定的中性路径，不暴露临时目录或真实目录结构
+    const ws = JSON.stringify('C:/projects/demo');
+    await mainWindow.webContents.executeJavaScript(`(() => {
+      const ws = ${ws};
+      const now = Date.now();
+      const bt = String.fromCharCode(96);
+      const fence = bt + bt + bt;
+      const intro = [
+        '## 快速排序实现',
+        '',
+        '把基准值取到中间，双指针向中间收缩，遇到逆序就交换：',
+        '',
+        '| 步骤 | 说明 |',
+        '|---|---|',
+        '| 1 | 选基准 |',
+        '| 2 | 左右扫描 |',
+        '| 3 | 递归子区间 |',
+        '',
+        '代码块加上行号后更容易对照：',
+        ''
+      ].join(String.fromCharCode(10));
+      const code = fence + 'js' + String.fromCharCode(10) +
+        'function quickSort(a) {' + String.fromCharCode(10) +
+        '  if (a.length <= 1) return a;' + String.fromCharCode(10) +
+        '  const mid = a[a.length >> 1];' + String.fromCharCode(10) +
+        '  return [' + String.fromCharCode(10) +
+        '    ...quickSort(a.filter((x) => x < mid)),' + String.fromCharCode(10) +
+        '    ...a.filter((x) => x === mid),' + String.fromCharCode(10) +
+        '    ...quickSort(a.filter((x) => x > mid)),' + String.fromCharCode(10) +
+        '  ];' + String.fromCharCode(10) +
+        '}' + String.fromCharCode(10) + fence;
+      const toolBlock = {
+        type: 'tool',
+        id: 'demo-tool-1',
+        name: 'read_file',
+        input: { path: ws + '/src/quick-sort.js' },
+        output: 'export function quickSort(list) {' + String.fromCharCode(10) + '  return list.slice().sort((a, b) => a - b);' + String.fromCharCode(10) + '}' + String.fromCharCode(10),
+        state: 'done'
+      };
+      const s1 = {
+        id: 'demo_session_1',
+        title: '快速排序与边界条件',
+        cwd: ws,
+        createdAt: now - 3600000,
+        updatedAt: now - 60000,
+        messages: [
+          { role: 'user', text: '帮我把 quickSort 改成不改变原数组，并说明时间复杂度的退化场景。', ts: now - 300000 },
+          { role: 'assistant', blocks: [
+            { type: 'thinking', text: '先确认是否要求稳定排序，再看是否允许额外空间。' },
+            { type: 'text', text: intro },
+            { type: 'text', text: code },
+            toolBlock
+          ], ts: now - 240000 },
+          { role: 'user', text: '再补一组边界用例。', ts: now - 200000 },
+          { role: 'assistant', blocks: [{ type: 'text', text: '边界用例：空数组、单元素、全部相同、已有序、完全逆序。前四种都是 O(n log n)，只有朴素实现的完全逆序会退化成 O(n²)。' }], ts: now - 180000 }
+        ]
+      };
+      const s2 = { id: 'demo_session_2', title: '给项目补充单元测试', cwd: ws, createdAt: now - 7200000, updatedAt: now - 3600000, messages: [{ role: 'user', text: '从 0 搭一套单元测试。', ts: now - 7200000 }, { role: 'assistant', blocks: [{ type: 'text', text: '建议先跑通最小用例，再补覆盖率门槛。' }], ts: now - 7000000 }] };
+      const s3 = { id: 'demo_session_3', title: '梳理会话存储结构', cwd: ws, createdAt: now - 10800000, updatedAt: now - 9000000, messages: [{ role: 'user', text: '会话文件为什么要分索引和正文？', ts: now - 10800000 }, { role: 'assistant', blocks: [{ type: 'text', text: '索引只放元数据，列表渲染不必读正文；正文按需补齐，千级会话也能秒开。' }], ts: now - 10700000 }] };
+      state.sessions = [s1, s2, s3];
+      state.current = s1;
+      state.projectsCollapsed = false;
+      if (state.searchIndex) state.searchIndex = new Map();
+      renderAll();
+    })()`);
+    await wait(700);
+    await cap('01-chat.png');
+
+    // 设置页：配置来自临时 USERPROFILE 下的假 qwen settings.json
+    mainWindow.webContents.send('smoke:settings');
+    await wait(900);
+    await cap('02-settings.png');
+    await mainWindow.webContents.executeJavaScript("setCfgSection('providers')");
+    await wait(700);
+    await cap('03-providers.png');
+    await mainWindow.webContents.executeJavaScript("setCfgSection('general')");
+    await wait(300);
+    await mainWindow.webContents.executeJavaScript("closeSettings()");
+    await wait(600);
+
+    // 深色主题
+    await mainWindow.webContents.executeJavaScript("setTheme('dark')");
+    await wait(800);
+    await cap('04-dark.png');
+  } catch (e) {
+    log('shots failed ' + String((e && e.message) || e));
+    console.error('[shots] failed', String((e && e.message) || e));
+  } finally {
+    setTimeout(() => app.quit(), 400);
+  }
+}
+
 // R113：破损安装演练——`--probe` 只读地检查启动后的关键状态（内核探测 / CLI 引导条 / 界面是否正常），
 // 用于对比「完整安装」与「内核目录被删掉」两种情况。
 async function runProbe() {
@@ -7083,7 +7208,13 @@ async function runPerfSmoke() {
 }
 
 async function runSmoke() {
-  const shotDir = path.join(WRITABLE_DIR, 'shots');
+  // 冒烟顺带截的图跑在真实配置与真实会话上，一旦落到仓库就会把用户名、端点、工作区路径带出去。
+  // 默认改写到临时目录；只有显式 QCODE_SMOKE_SHOTS=1 时才写仓库 shots/（仅供本人调试）。
+  // 对外展示用图请走 `--shots`（scripts/clean-shots.js，全假数据）。
+  const shotDir =
+    process.env.QCODE_SMOKE_SHOTS === '1'
+      ? path.join(WRITABLE_DIR, 'shots')
+      : path.join(os.tmpdir(), 'qcode-smoke-shots');
   fs.mkdirSync(shotDir, { recursive: true });
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   let originalEffort;

@@ -35,7 +35,8 @@
     "smoke": "electron . --smoke",
     "bench": "electron . --bench",
     "idle": "electron . --idle",
-    "e2e": "electron . --e2e"
+    "e2e": "electron . --e2e",
+    "shots": "node scripts/clean-shots.js"
   },
   "devDependencies": {
     "electron": "43.7.3",

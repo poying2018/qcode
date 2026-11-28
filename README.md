@@ -101,6 +101,12 @@ npx electron . --e2e
 
 ## 截图
 
-界面截图正在按「不含任何本机路径与个人配置」的标准重新生成，补齐后会放在这里。
+> 全部截图由 `node scripts/clean-shots.js` 在一次性干净环境里生成：临时 `USERPROFILE`、假 qwen 配置、独立 `userData`，不含任何真实端点与本机路径。
 
-需要先看效果的话，可以本地跑 `npm start`，或用 `--shots` 开关自动生成全套界面截图到 `shots/`。
+![会话界面](docs/screenshots/chat-light.png)
+
+| 设置 · 通用 | 设置 · 模型与供应商 |
+|---|---|
+| ![通用设置](docs/screenshots/settings-general.png) | ![供应商](docs/screenshots/settings-providers.png) |
+
+![深色主题](docs/screenshots/chat-dark.png)
